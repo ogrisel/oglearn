@@ -3,8 +3,18 @@ oglearn
 
 ogrisel's utility extensions for [scikit-learn](http://scikit-learn.org)
 
-This library is experimental: the API will break and I don't intend to do any
-release. The license is MIT.
+This library is experimental:
+
+- the API will break,
+- stuff might go away without notice,
+- the documentation is lacking or inexistant,
+- test coverage will be very low or inexistant,
+- I don't intend to do any release.
+
+I plan to rework this codebase a lot and dump ad-hoc code here. Hence tests,
+doc and consistent API are not (yet) the focus.
+
+The license is MIT.
 
 Useful stuff from this lib might hand up upstream in scikit-learn at some point
 or never.

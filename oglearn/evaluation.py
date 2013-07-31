@@ -109,36 +109,6 @@ def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5,
     return train_sizes, train_scores, test_scores
 
 
-def _display_scores(params, scores, append_star=False):
-    """Format the mean score +/- std error for params"""
-    params = ", ".join("{0}={1}".format(k, v)
-                       for k, v in params.items())
-    score_line = "mean: {:.3f} (+/-{:.3f}) stdev: {:.3f}".format(
-        params, np.mean(scores), sem(scores), np.std(scores))
-    if append_star:
-        score_line += " *"
-    score_line += "\n" + params
-    return score_line
-
-
-def display_grid_scores(grid_scores, top=None):
-    """Helper function to format a report on a grid of scores"""
-
-    grid_scores = sorted(grid_scores, key=lambda x: x[1], reverse=True)
-    if top is not None:
-        grid_scores = grid_scores[:top]
-
-    # Compute a threshold for staring models with overlapping
-    # stderr:
-    _, best_mean, best_scores = grid_scores[0]
-    threshold = best_mean - 2 * sem(best_scores)
-
-    for params, mean_score, scores in grid_scores:
-        append_star = mean_score + 2 * sem(scores) > threshold
-        print(_display_scores(params, scores, append_star=append_star))
-
-
-
 if __name__ == "__main__":
     from sklearn.datasets import load_digits
     from sklearn.svm import SVC
