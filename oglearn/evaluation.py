@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import sem
 from sklearn.cross_validation import train_test_split
+from sklearn.externals import joblib
 
 
 def plot_envelope(x, y_values, label=None, color=None, marker='o'):
@@ -26,8 +27,20 @@ def plot_envelope(x, y_values, label=None, color=None, marker='o'):
     plt.plot(x, y_mean, marker + '-k', color=color, label=label)
 
 
+def _compute_scores(model, train_sizes, X_train, y_train, X_test, y_test):
+    train_scores = np.empty(len(train_sizes), dtype=np.float)
+    test_scores = np.empty(len(train_sizes), dtype=np.float)
+    for ts_idx, train_size in enumerate(train_sizes):
+        X_train_sub = X_train[:train_size]
+        y_train_sub = y_train[:train_size]
+        model.fit(X_train_sub, y_train_sub)
+        train_scores[ts_idx] = model.score(X_train_sub, y_train_sub)
+        test_scores[ts_idx] = model.score(X_test, y_test)
+    return train_scores, test_scores
+
+
 def learning_curves(model, X, y, n_cv_runs=5, steps=5, train_size=None,
-                    test_size=0.1):
+                    test_size=0.1, n_jobs=1):
     """Compute train and test learning curves on subsamples of the data
 
     Return the arrays (train_sizes, train_scores, test_scores).
@@ -61,24 +74,19 @@ def learning_curves(model, X, y, n_cv_runs=5, steps=5, train_size=None,
     train_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
     test_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
 
-    # TODO: use joblib parallel
     for run_idx in range(n_cv_runs):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, random_state=run_idx, test_size=test_size)
-
-        for ts_idx, train_size in enumerate(train_sizes):
-            X_train_sub = X_train[:train_size]
-            y_train_sub = y_train[:train_size]
-            model.fit(X_train_sub, y_train_sub)
-            train_scores[ts_idx, run_idx] = model.score(X_train_sub,
-                                                        y_train_sub)
-            test_scores[ts_idx, run_idx] = model.score(X_test, y_test)
+        results = _compute_scores(model, train_sizes,
+                                  X_train, y_train, X_test, y_test)
+        train_scores[:, run_idx] = results[0]
+        test_scores[:, run_idx] = results[1]
 
     return train_sizes, train_scores, test_scores
 
 
 def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5,
-                         train_size=None, test_size=0.1):
+                         train_size=None, test_size=0.1, n_jobs=1):
     """Compute and plot learning curves.
 
     Return the arrays (train_sizes, train_scores, test_scores).
@@ -87,7 +95,7 @@ def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5,
     """
     train_sizes, train_scores, test_scores = learning_curves(
         model, X, y, n_cv_runs=n_cv_runs, steps=steps,
-        train_size=train_size, test_size=test_size)
+        train_size=train_size, test_size=test_size, n_jobs=n_jobs)
 
     plot_envelope(train_sizes, train_scores, label='Train', color='b')
     plot_envelope(train_sizes, test_scores, label='Test', color='g')
@@ -131,7 +139,10 @@ def display_grid_scores(grid_scores, top=None):
 if __name__ == "__main__":
     from sklearn.datasets import load_digits
     from sklearn.svm import SVC
+    import time
 
     digits = load_digits()
+    tic = time.time()
     plot_learning_curves(SVC(gamma=0.01), digits.data, digits.target, steps=5)
+    print("Computed learning curves in %0.3fs" % (time.time() - tic))
     plt.show()
