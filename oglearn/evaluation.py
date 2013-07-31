@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import sem
 from sklearn.cross_validation import train_test_split
-from sklearn.externals import joblib
+from sklearn.externals.joblib import Parallel, delayed
 
 
 def plot_envelope(x, y_values, label=None, color=None, marker='o'):
@@ -27,7 +27,9 @@ def plot_envelope(x, y_values, label=None, color=None, marker='o'):
     plt.plot(x, y_mean, marker + '-k', color=color, label=label)
 
 
-def _compute_scores(model, train_sizes, X_train, y_train, X_test, y_test):
+def _compute_scores(model, train_sizes, test_size, X, y, run_idx):
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, random_state=run_idx, test_size=test_size)
     train_scores = np.empty(len(train_sizes), dtype=np.float)
     test_scores = np.empty(len(train_sizes), dtype=np.float)
     for ts_idx, train_size in enumerate(train_sizes):
@@ -74,13 +76,13 @@ def learning_curves(model, X, y, n_cv_runs=5, steps=5, train_size=None,
     train_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
     test_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
 
-    for run_idx in range(n_cv_runs):
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, random_state=run_idx, test_size=test_size)
-        results = _compute_scores(model, train_sizes,
-                                  X_train, y_train, X_test, y_test)
-        train_scores[:, run_idx] = results[0]
-        test_scores[:, run_idx] = results[1]
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(_compute_scores)(model, train_sizes, test_size, X, y, run_idx)
+        for run_idx in range(n_cv_runs))
+
+    for run_idx, result in enumerate(results):
+        train_scores[:, run_idx] = result[0]
+        test_scores[:, run_idx] = result[1]
 
     return train_sizes, train_scores, test_scores
 
@@ -143,6 +145,8 @@ if __name__ == "__main__":
 
     digits = load_digits()
     tic = time.time()
-    plot_learning_curves(SVC(gamma=0.01), digits.data, digits.target, steps=5)
-    print("Computed learning curves in %0.3fs" % (time.time() - tic))
+    plot_learning_curves(SVC(gamma=0.01), digits.data, digits.target, steps=5,
+                         n_jobs=-1)
+    print("Computed and plotted learning curves in %0.3fs"
+          % (time.time() - tic))
     plt.show()
