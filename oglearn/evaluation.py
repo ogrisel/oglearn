@@ -138,6 +138,7 @@ def display_grid_scores(grid_scores, top=None):
         print(_display_scores(params, scores, append_star=append_star))
 
 
+
 if __name__ == "__main__":
     from sklearn.datasets import load_digits
     from sklearn.svm import SVC
