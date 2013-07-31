@@ -26,8 +26,8 @@ def plot_envelope(x, y_values, label=None, color=None, marker='o'):
     plt.plot(x, y_mean, marker + '-k', color=color, label=label)
 
 
-def learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1,
-                    train_size=None):
+def learning_curves(model, X, y, n_cv_runs=5, steps=5, train_size=None,
+                    test_size=0.1):
     """Compute train and test learning curves on subsamples of the data
 
     Return the arrays (train_sizes, train_scores, test_scores).
@@ -38,12 +38,16 @@ def learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1,
     if isinstance(steps, int):
         if train_size is None:
             train_size = (1 - test_size)
+            max_train_size = int(train_size * n_samples)
+        elif train_size > 1:
+            # assume exact number of samples
+            max_train_size = int(train_size)
         else:
             if train_size + test_size > 1.:
                 raise ValueError(
                     ('The sum of train_size={} and test_size={}'
                      ' should be less than 1.0').format(train_size, test_size))
-        max_train_size = int(train_size * n_samples)
+            max_train_size = int(train_size * n_samples)
         min_train_size = int(0.1 * n_samples)
 
         train_sizes = np.logspace(np.log10(min_train_size),
@@ -73,7 +77,8 @@ def learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1,
     return train_sizes, train_scores, test_scores
 
 
-def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1):
+def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5,
+                         train_size=None, test_size=0.1):
     """Compute and plot learning curves.
 
     Return the arrays (train_sizes, train_scores, test_scores).
@@ -81,7 +86,8 @@ def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1):
 
     """
     train_sizes, train_scores, test_scores = learning_curves(
-        model, X, y, n_cv_runs=n_cv_runs, steps=steps, test_size=0.1)
+        model, X, y, n_cv_runs=n_cv_runs, steps=steps,
+        train_size=train_size, test_size=test_size)
 
     plot_envelope(train_sizes, train_scores, label='Train', color='b')
     plot_envelope(train_sizes, test_scores, label='Test', color='g')
