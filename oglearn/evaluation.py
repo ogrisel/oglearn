@@ -26,28 +26,38 @@ def plot_envelope(x, y_values, label=None, color=None, marker='o'):
     plt.plot(x, y_mean, marker + '-k', color=color, label=label)
 
 
-def plot_learning_curves(model, X, y, n_cv_runs=10, n_steps=5, max_score=1.0,
-                         test_size=0.1):
-    """Compute and plot learning curves.
+def learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1,
+                    train_size=None):
+    """Compute train and test learning curves on subsamples of the data
 
-    Return the pair of arrays (train_scores, test_scores). Each array has
-    shape (n_steps, n_cv_runs).
+    Return the arrays (train_sizes, train_scores, test_scores).
+    Each score array has shape (n_steps, n_cv_runs).
 
     """
-    # TODO: move learning curve computations out in another public function
-    # TODO: use joblib parallel
     n_samples = X.shape[0]
-    max_train_size = int((1 - test_size) * n_samples)
-    min_train_size = int(0.1 * n_samples)
-    n_steps = 5
+    if isinstance(steps, int):
+        if train_size is None:
+            train_size = (1 - test_size)
+        else:
+            if train_size + test_size > 1.:
+                raise ValueError(
+                    ('The sum of train_size={} and test_size={}'
+                     ' should be less than 1.0').format(train_size, test_size))
+        max_train_size = int(train_size * n_samples)
+        min_train_size = int(0.1 * n_samples)
 
-    train_sizes = np.logspace(np.log10(min_train_size),
-                              np.log10(max_train_size),
-                              n_steps).astype(np.int)
+        train_sizes = np.logspace(np.log10(min_train_size),
+                                  np.log10(max_train_size),
+                                  steps).astype(np.int)
+    else:
+        # assume precomputed steps
+        train_sizes = np.asarray(steps)
 
+    n_steps = len(train_sizes)
     train_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
     test_scores = np.zeros((n_steps, n_cv_runs), dtype=np.float)
 
+    # TODO: use joblib parallel
     for run_idx in range(n_cv_runs):
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, random_state=run_idx, test_size=test_size)
@@ -60,14 +70,27 @@ def plot_learning_curves(model, X, y, n_cv_runs=10, n_steps=5, max_score=1.0,
                                                         y_train_sub)
             test_scores[ts_idx, run_idx] = model.score(X_test, y_test)
 
+    return train_sizes, train_scores, test_scores
+
+
+def plot_learning_curves(model, X, y, n_cv_runs=5, steps=5, test_size=0.1):
+    """Compute and plot learning curves.
+
+    Return the arrays (train_sizes, train_scores, test_scores).
+    Each score array has shape (n_steps, n_cv_runs).
+
+    """
+    train_sizes, train_scores, test_scores = learning_curves(
+        model, X, y, n_cv_runs=n_cv_runs, steps=steps, test_size=0.1)
+
     plot_envelope(train_sizes, train_scores, label='Train', color='b')
     plot_envelope(train_sizes, test_scores, label='Test', color='g')
     plt.xlabel('Training set size')
     plt.ylabel('Score')
     plt.xlim(train_sizes[0], train_sizes[-1])
-    plt.ylim((None, max_score))
+    plt.ylim(None, max(train_scores.max(), test_scores.max()) * 1.05)
     plt.legend(loc='best')
-    return train_scores, test_scores
+    return train_sizes, train_scores, test_scores
 
 
 def _display_scores(params, scores, append_star=False):
@@ -97,3 +120,12 @@ def display_grid_scores(grid_scores, top=None):
     for params, mean_score, scores in grid_scores:
         append_star = mean_score + 2 * sem(scores) > threshold
         print(_display_scores(params, scores, append_star=append_star))
+
+
+if __name__ == "__main__":
+    from sklearn.datasets import load_digits
+    from sklearn.svm import SVC
+
+    digits = load_digits()
+    plot_learning_curves(SVC(gamma=0.01), digits.data, digits.target, steps=5)
+    plt.show()
